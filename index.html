@@ -12,6 +12,13 @@ canvas#c{position:fixed;inset:0;width:100%;height:100%}
 #aviso{position:fixed;bottom:34px;left:50%;transform:translateX(-50%);background:#2b2140;color:#fff;padding:10px 20px;border-radius:22px;font-weight:700;width:max-content;max-width:92vw;text-align:center}
 #inicio{position:fixed;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:16px;background:#fff8e8e8;text-align:center;padding:20px}
 h1{font-size:clamp(38px,8vw,84px);margin:0;color:#d8433f}
+#conf{position:fixed;inset:0;width:100%;height:100%;pointer-events:none}
+#fin{position:fixed;inset:0;display:flex;padding:16px;background:#2b214088;overflow:auto;animation:ap .7s}
+#fin>div{margin:auto;max-width:620px;background:#fff8e8;border:4px solid #2b2140;border-radius:26px;padding:26px 30px;text-align:center}
+#fin h1{font-size:clamp(30px,6vw,52px);margin-bottom:12px}
+#fin p{margin:0 0 12px;font-size:clamp(16px,2.2vw,19px);line-height:1.45}
+#fin button{font-size:20px;padding:10px 34px;border-radius:30px;margin-top:4px}
+@keyframes ap{from{opacity:0}}
 #inicio p{margin:0;max-width:560px;line-height:1.5;font-size:18px}
 button{font:inherit;font-weight:700;border:3px solid #2b2140;background:#ffc93c;color:#2b2140;cursor:pointer}
 #jugar{font-size:22px;padding:12px 44px;border-radius:30px}
@@ -27,13 +34,18 @@ button{font:inherit;font-weight:700;border:3px solid #2b2140;background:#ffc93c;
 <div id="inicio"><h1>Puente a Ghana</h1>
 <p>Busca por la clase los 5 materiales del grupo. Con cada uno se construye un quinto del puente a Ghana.</p>
 <p><b>WASD</b> o <b>flechas</b> para mover al grupo, mantén <b>E</b> o <b>espacio</b> para buscar.</p><button id="jugar">Jugar</button></div>
+<canvas id="conf"></canvas><div id="fin" hidden><div><h1>¡Lo habéis conseguido!</h1>
+<p>Para ti un lápiz o una mochila son cosas normales. Pero hay niños y niñas que no tienen ni eso, y así aprender en el cole es muchísimo más difícil. Y no es porque no quieran, ¿eh?</p>
+<p>Por eso mola tanto donar. Esa mochila que tienes olvidada en el armario puede ser justo la que alguien necesita para ir a clase. A ti casi no te cuesta nada, y a esa persona le cambia el día. ¡O el curso entero!</p>
+<p><b>No hace falta ser mayor ni ser rico para ayudar. Solo hacen falta ganas de compartir.</b></p>
+<button id="otra">Jugar otra vez</button></div></div>
 <script>
 (()=>{'use strict';
 const $=id=>document.getElementById(id), cv=$('c'), c=cv.getContext('2d'), TAU=Math.PI*2;
 const lim=(v,a,b)=>Math.max(a,Math.min(b,v)), suave=t=>{t=lim(t,0,1);return t*t*(3-2*t)};
 const TINTA='#2b2140';
 let W,H,D;
-function medir(){D=Math.min(devicePixelRatio||1,2);W=innerWidth;H=innerHeight;cv.width=W*D;cv.height=H*D}
+function medir(){D=Math.min(devicePixelRatio||1,2);W=innerWidth;H=innerHeight;cv.width=W*D;cv.height=H*D;const k=$('conf');k.width=W*D;k.height=H*D}
 addEventListener('resize',medir);medir();
 
 // ---------- DATOS (lo que se cambia con facilidad) ----------
@@ -66,7 +78,7 @@ for(const y of[450,630])for(const x of[330,680,1030])mu('el pupitre','pupitre',x
 const G={x:750,y:400,dir:'down',anda:0,t:0,emp:0,tira:false};
 const EMPUJE=[[32,-36],[32,36],[32,0],[-10,-19],[-10,19]]; // sitios de los niños detrás del carro
 const K=NINOS.map(()=>({x:0,y:0,dir:'down',anda:0,act:'',lanza:0}));
-let fin=null, acabado=false;
+let fin=null;
 let estado='inicio', cogidos=0, ev=null, busca=null, cerca=null, avisoT=0, reloj=0;
 const cam={x:750,y:450,s:1}, part=[];
 
@@ -172,24 +184,45 @@ function buscando(dt){
   if(m.item>=0){ev={t:0,k:m.item,x:m.x+m.w/2,y:m.y-m.z+10,fase:0};nota(523,.2);nota(659,.2,.1);nota(784,.35,.2)}
   else{aviso('En '+m.n+' no hay nada.');nota(150,.2)}
 }
+// ---------- CONFETI Y PANTALLA FINAL ----------
+const conf=[];
+function tirarConfeti(){
+  const n=W<600?170:330;
+  for(let i=0;i<n;i++)conf.push({x:Math.random()*W,y:-20-Math.random()*H*1.1,vx:0,vy:110+Math.random()*130,c:COL[i%8],a:6+Math.random()*7,g:Math.random()*TAU,v:(Math.random()-.5)*9,o:Math.random()*TAU,redondo:i%4===0});
+  for(let i=0;i<n/2;i++){const s=i%2;conf.push({x:s?W+10:-10,y:H*.95,vx:(s?-1:1)*(120+Math.random()*W*.75),vy:-(H*.5+Math.random()*H*.85),c:COL[i%8],a:6+Math.random()*7,g:0,v:(Math.random()-.5)*14,o:Math.random()*TAU,redondo:i%4===0})}
+}
+function moverConfeti(dt){
+  for(const p of conf){p.vy+=(170-p.vy)*Math.min(1,dt*1.5);p.vx*=1-Math.min(1,dt*.9);p.x+=(p.vx+Math.sin(reloj*2+p.o)*40)*dt;p.y+=p.vy*dt;p.g+=p.v*dt;
+    if(p.y>H+20&&p.vy>0){p.y=-20;p.x=Math.random()*W;p.vx=0}} // no deja de caer
+}
+function pintarConfeti(){
+  if(!conf.length)return;
+  const k=$('conf').getContext('2d');k.setTransform(D,0,0,D,0,0);k.clearRect(0,0,W,H);
+  k.globalAlpha=estado==='fin'?.75:1;
+  for(const p of conf){k.save();k.translate(p.x,p.y);k.rotate(p.g);k.scale(1,Math.cos(reloj*5+p.o));k.fillStyle=p.c;
+    if(p.redondo){k.beginPath();k.arc(0,0,p.a*.5,0,TAU);k.fill()}else k.fillRect(-p.a/2,-p.a/3,p.a,p.a*.66);k.restore()}
+}
+$('otra').onclick=()=>location.reload();
+function terminar(){
+  estado='fin';T.clear();for(const i of['hud','aviso','palanca','accion'])$(i).hidden=true;
+  $('fin').hidden=false;
+}
 // ---------- FINAL: lanzar las mochilas ----------
 const SITIOS=[[2480,455],[2545,440],[2450,515],[2480,575],[2555,580]];
 function final(dt){
   const f=fin;f.t+=dt;
   if(f.t<0){K.forEach(k=>{k.anda=0;k.act=''});return[2640,455]} // el carro acaba de convertirse en el montón
   G.emp=0;G.t+=dt*10;
-  if(f.t<9.6){
+  {
     K.forEach((k,i)=>{if(irA(k,SITIOS[i][0],SITIOS[i][1],dt,230))k.dir='right';k.act=''});
     if(f.n===0&&f.t<.06)aviso('¡Mochilas para todos!',3);
     while(f.n<GENTE.length&&f.t>2+f.n*.48){const i=f.n++,a=K[i%NM],b=GENTE[i];
       f.vuelo.push({x0:a.x+10,y0:a.y-62,g:b,t:0});a.lanza=.4;nota(330+i*25,.14)}
     for(const v of f.vuelo)if(v.t<1){v.t+=dt/.85;if(v.t>=1){v.g.tiene=true;v.g.salto=1;nota(700,.16,0,'sine')}}
     if(f.t>8.6)K.forEach(k=>{k.act='feliz';k.dir='down'});
-    if(f.t>8.6&&!f.msg){f.msg=1;aviso('¡Todos tienen su mochila! Gracias por tender el puente.',6);[523,659,784,1047].forEach((n,i)=>nota(n,.4,i*.15));
-      for(let i=0;i<60;i++)part.push({x:2500+Math.random()*460,y:330+Math.random()*100,vx:(Math.random()-.5)*120,vy:-60-Math.random()*160,t:-Math.random()*.5,c:COL[i%8]})}
-  }else if(f.t>11){
-    let ok=true;G.x=2500;G.y=470;G.dir='down';K.forEach((k,i)=>{k.act='';if(!irA(k,G.x+NINOS[i].dx,G.y+NINOS[i].dy,dt,200))ok=false});
-    if(ok){fin=null;acabado=true;formar()}
+    if(f.t>8.6&&!f.msg){f.msg=1;aviso('¡Todos tienen su mochila!',4);tirarConfeti();[523,659,784,1047].forEach((n,i)=>nota(n,.4,i*.15));
+    }
+    if(f.t>12.6&&estado==='juego')terminar();
   }
   return[2715,455];
 }
@@ -204,6 +237,8 @@ function paso(dt){
   for(const g of GENTE)g.salto=Math.max(0,g.salto-dt*.9);
   if(estado==='inicio')formar();
   let cx=G.x,cy=G.y-20;G.anda=0;
+  if(estado==='fin'){const p=final(dt);cx=p[0];cy=p[1]}
+  moverConfeti(dt);
   if(estado==='juego'){
     if(ev){const r=evento(dt);if(r){cx=r[0];cy=r[1]}}
     else if(fin){const r=final(dt);cx=r[0];cy=r[1]}
@@ -357,7 +392,7 @@ function baranda(abajo){
 }
 function mochi(x,y,col,e=1,g=0){c.save();c.translate(x,y);c.rotate(g);c.scale(e,e);caja(-5,-36,10,8,3,col,2.5);caja(-16,-32,32,32,9,col,2.5);caja(-10,-16,20,13,4,'#ffffff66',2);c.restore()}
 function monton(){
-  const q=GENTE.length-(fin?fin.n:acabado?GENTE.length:0);if(!q||!fin)return;const e=fin.t<0?suave((fin.t+1.2)/.35)*(1+.15*Math.sin(Math.min(1,(fin.t+1.2)/.7)*Math.PI)):1;
+  const q=GENTE.length-(fin?fin.n:0);if(!q||!fin)return;const e=fin.t<0?suave((fin.t+1.2)/.35)*(1+.15*Math.sin(Math.min(1,(fin.t+1.2)/.7)*Math.PI)):1;
   c.save();c.translate(MONTON.x,MONTON.y);c.scale(e,e);c.translate(-MONTON.x,-MONTON.y);sombra(MONTON.x,MONTON.y,80,16);
   let i=0;[[5,0],[4,26],[2,52],[1,78]].forEach(([k,al])=>{for(let j=0;j<k;j++,i++)if(i<q)mochi(MONTON.x+(j-(k-1)/2)*31,MONTON.y-al,GENTE[GENTE.length-1-i].n.moch,1,(i%3-1)*.12)});
   c.restore();
@@ -446,8 +481,8 @@ function pintar(){
   for(const p of part){c.globalAlpha=lim(1-p.t/.9,0,1);circ(p.x,p.y,5,p.c,2)}c.globalAlpha=1;
 }
 let ant=performance.now();
-function bucle(t){const dt=Math.min(.05,Math.max(0,(t-ant)/1000));ant=t;paso(dt);pintar();requestAnimationFrame(bucle)}
+function bucle(t){const dt=Math.min(.05,Math.max(0,(t-ant)/1000));ant=t;paso(dt);pintar();pintarConfeti();requestAnimationFrame(bucle)}
 requestAnimationFrame(bucle);
-window.__M={G,MUEBLES,PU,K,CA,GENTE,NINOS,paso,pintar,buscar,empezar,cabe,T,get cogidos(){return cogidos},get ev(){return ev},get fin(){return fin},get busca(){return busca},get acabado(){return acabado},get cerca(){return cerca}}; // para probar
+window.__M={G,MUEBLES,PU,K,CA,GENTE,NINOS,paso,pintar,buscar,empezar,cabe,T,get cogidos(){return cogidos},get ev(){return ev},get fin(){return fin},get busca(){return busca},get estado(){return estado},conf,get cerca(){return cerca}}; // para probar
 })();
 </script></body></html>
